@@ -13,26 +13,26 @@ C:/ti/C2000Ware_3_03_00_00_Software/driverlib/f2837xd/driverlib/ccs/Debug/driver
 
 C_SRCS += \
 ../board.c \
-../empty_driverlib_main.c 
+../main.c 
 
 C_DEPS += \
 ./board.d \
-./empty_driverlib_main.d 
+./main.d 
 
 OBJS += \
 ./board.obj \
-./empty_driverlib_main.obj 
+./main.obj 
 
 OBJS__QUOTED += \
 "board.obj" \
-"empty_driverlib_main.obj" 
+"main.obj" 
 
 C_DEPS__QUOTED += \
 "board.d" \
-"empty_driverlib_main.d" 
+"main.d" 
 
 C_SRCS__QUOTED += \
 "../board.c" \
-"../empty_driverlib_main.c" 
+"../main.c" 
 
 

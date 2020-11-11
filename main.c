@@ -50,6 +50,215 @@
 #include "driverlib.h"
 #include "device.h"
 #include "board.h"
+#include <stdint.h>
+#include <stdlib.h>
+
+enum switch_commands{
+    INCREMENT,
+    DECREMENT,
+    RESET,
+    SET1,
+    SET2,
+    SET3,
+    SET4,
+    SET5,
+    SET6
+};
+
+enum switch_states{
+    STATE0,
+    STATE1,
+    STATE2,
+    STATE3,
+    STATE4,
+    STATE5,
+    STATE6
+};
+
+#define HSA_PIN 1
+#define LSA_PIN 0
+#define HSB_PIN 3
+#define LSB_PIN 2
+#define HSC_PIN 5
+#define LSC_PIN 4
+
+#define GUARD_PD_US 500
+
+
+void switch_state_machine(enum switch_commands command)
+{
+    static uint8_t state = STATE0;
+    switch(state){
+        case STATE0:
+            switch(command){
+                case INCREMENT:
+                    state = 1;
+                    break;
+                case DECREMENT:
+                    state = 6;
+                    break;
+                case SET1:
+                    state = 1;
+                    break;
+                case SET2:
+                    state = 2;
+                    break;
+                case SET3:
+                    state = 3;
+                    break;
+                case SET4:
+                    state = 4;
+                    break;
+                case SET5:
+                    state = 5;
+                    break;
+                case SET6:
+                    state = 6;
+                    break;
+                default:
+                    state = 0;
+                    break;
+            }
+            break;
+        case STATE1:
+            switch(command){
+                case INCREMENT:
+                    state = STATE2;
+                    break;
+                case DECREMENT:
+                    state = STATE6;
+                    break;
+                case RESET:
+                    state = STATE0;
+                    break;
+            }
+            break;
+        case STATE2:
+            switch(command){
+                case INCREMENT:
+                    state = STATE3;
+                    break;
+                case DECREMENT:
+                    state = STATE1;
+                    break;
+                case RESET:
+                    state = STATE0;
+                    break;
+            }
+            break;
+            case STATE3:
+                switch(command){
+                    case INCREMENT:
+                        state = STATE4;
+                        break;
+                    case DECREMENT:
+                        state = STATE2;
+                        break;
+                    case RESET:
+                        state = STATE0;
+                        break;
+                }
+                break;
+            case STATE4:
+                switch(command){
+                    case INCREMENT:
+                        state = STATE5;
+                        break;
+                    case DECREMENT:
+                        state = STATE3;
+                        break;
+                    case RESET:
+                        state = STATE0;
+                        break;
+                }
+                break;
+            case STATE5:
+                switch(command){
+                    case INCREMENT:
+                        state = STATE6;
+                        break;
+                    case DECREMENT:
+                        state = STATE4;
+                        break;
+                    case RESET:
+                        state = STATE0;
+                        break;
+                }
+                break;
+            case STATE6:
+                switch(command){
+                    case INCREMENT:
+                        state = STATE1;
+                        break;
+                    case DECREMENT:
+                        state = STATE5;
+                        break;
+                    case RESET:
+                        state = STATE0;
+                        break;
+                }
+                break;
+    }
+    switch(state){
+        case STATE0:
+            GPIO_writePin(HSA_PIN,0);
+            GPIO_writePin(LSA_PIN,0);
+            GPIO_writePin(HSB_PIN,0);
+            GPIO_writePin(LSB_PIN,0);
+            GPIO_writePin(HSC_PIN,0);
+            GPIO_writePin(LSC_PIN,0);
+            break;
+        case STATE1:
+            GPIO_writePin(HSA_PIN,1);
+            GPIO_writePin(LSA_PIN,0);
+            GPIO_writePin(HSB_PIN,0);
+            GPIO_writePin(LSB_PIN,1);
+            GPIO_writePin(HSC_PIN,0);
+            GPIO_writePin(LSC_PIN,0);
+            break;
+        case STATE2:
+            GPIO_writePin(HSA_PIN,1);
+            GPIO_writePin(LSA_PIN,0);
+            GPIO_writePin(HSB_PIN,0);
+            GPIO_writePin(LSB_PIN,0);
+            GPIO_writePin(HSC_PIN,0);
+            GPIO_writePin(LSC_PIN,1);
+            break;
+        case STATE3:
+            GPIO_writePin(HSA_PIN,0);
+            GPIO_writePin(LSA_PIN,0);
+            GPIO_writePin(HSB_PIN,1);
+            GPIO_writePin(LSB_PIN,0);
+            GPIO_writePin(HSC_PIN,0);
+            GPIO_writePin(LSC_PIN,1);
+            break;
+        case STATE4:
+            GPIO_writePin(HSA_PIN,0);
+            GPIO_writePin(LSA_PIN,1);
+            GPIO_writePin(HSB_PIN,1);
+            GPIO_writePin(LSB_PIN,0);
+            GPIO_writePin(HSC_PIN,0);
+            GPIO_writePin(LSC_PIN,0);
+            break;
+        case STATE5:
+            GPIO_writePin(HSA_PIN,0);
+            GPIO_writePin(LSA_PIN,1);
+            GPIO_writePin(HSB_PIN,0);
+            GPIO_writePin(LSB_PIN,0);
+            GPIO_writePin(HSC_PIN,1);
+            GPIO_writePin(LSC_PIN,0);
+            break;
+        case STATE6:
+            GPIO_writePin(HSA_PIN,0);
+            GPIO_writePin(LSA_PIN,0);
+            GPIO_writePin(HSB_PIN,0);
+            GPIO_writePin(LSB_PIN,1);
+            GPIO_writePin(HSC_PIN,1);
+            GPIO_writePin(LSC_PIN,0);
+            break;
+    }
+    DEVICE_DELAY_US(GUARD_PD_US);
+}
 
 //
 // Main
@@ -66,8 +275,8 @@ void main(void)
 
     for(;;)
     {
-        GPIO_togglePin(0);
-        DEVICE_DELAY_US(500000);
+        switch_state_machine(INCREMENT);
+        DEVICE_DELAY_US(50000);
     }
 
 
