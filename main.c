@@ -75,15 +75,32 @@ enum switch_states{
     STATE6
 };
 
-#define HSA_PIN 1
-#define LSA_PIN 0
-#define HSB_PIN 3
-#define LSB_PIN 2
-#define HSC_PIN 5
-#define LSC_PIN 4
-
 #define GUARD_PD_US 500
 
+void switch_state_machine(enum switch_commands command);
+
+
+//
+// Main
+//
+void main(void)
+{
+    Device_init();
+    Interrupt_initModule();
+    Interrupt_initVectorTable();
+
+    Interrupt_enableMaster();
+
+    Board_init();
+
+    for(;;)
+    {
+        switch_state_machine(INCREMENT);
+        DEVICE_DELAY_US(50000);
+    }
+
+
+}
 
 void switch_state_machine(enum switch_commands command)
 {
@@ -258,28 +275,6 @@ void switch_state_machine(enum switch_commands command)
             break;
     }
     DEVICE_DELAY_US(GUARD_PD_US);
-}
-
-//
-// Main
-//
-void main(void)
-{
-    Device_init();
-    Interrupt_initModule();
-    Interrupt_initVectorTable();
-
-    Interrupt_enableMaster();
-
-    Board_init();
-
-    for(;;)
-    {
-        switch_state_machine(INCREMENT);
-        DEVICE_DELAY_US(50000);
-    }
-
-
 }
 
 //

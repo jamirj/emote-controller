@@ -26,6 +26,11 @@ void PinMux_init()
     GPIO_setPinConfig(GPIO_3_GPIO3);
     GPIO_setPinConfig(GPIO_4_GPIO4);
     GPIO_setPinConfig(GPIO_5_GPIO5);
+
+    //Hall sensor pins
+    GPIO_setPinConfig(GPIO_32_GPIO32);
+    GPIO_setPinConfig(GPIO_67_GPIO67);
+    GPIO_setPinConfig(GPIO_111_GPIO111);
 }
 
 void GPIO_init(){
@@ -39,4 +44,18 @@ void GPIO_init(){
         GPIO_setQualificationMode(i, GPIO_QUAL_ASYNC);
     }
 
+    GPIO_setDirectionMode(HALLA_PIN,GPIO_DIR_MODE_IN);
+    GPIO_setPadConfig(HALLA_PIN, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(HALLA_PIN, GPIO_CORE_CPU1);
+    GPIO_setQualificationMode(HALLA_PIN, GPIO_QUAL_ASYNC);
+
+    GPIO_setDirectionMode(HALLB_PIN,GPIO_DIR_MODE_IN);
+    GPIO_setPadConfig(HALLB_PIN, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(HALLB_PIN, GPIO_CORE_CPU1);
+    GPIO_setQualificationMode(HALLB_PIN, GPIO_QUAL_ASYNC);
+
+    GPIO_setDirectionMode(HALLC_PIN,GPIO_DIR_MODE_IN);
+    GPIO_setPadConfig(HALLC_PIN, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(HALLC_PIN, GPIO_CORE_CPU1);
+    GPIO_setQualificationMode(HALLC_PIN, GPIO_QUAL_ASYNC);
 }
