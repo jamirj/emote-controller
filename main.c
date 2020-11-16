@@ -53,6 +53,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define GUARD_PD_US 500
+
 enum switch_commands{
     INCREMENT,
     DECREMENT,
@@ -75,8 +77,14 @@ enum switch_states{
     STATE6
 };
 
-#define GUARD_PD_US 500
+//ISSUE
+//Look to see if these are the right configs
+EPWM_SignalParams pwmSignal =
+            {60000, 0.3f, 0.3f, false, DEVICE_SYSCLK_FREQ, SYSCTL_EPWMCLK_DIV_2,
+            EPWM_COUNTER_MODE_UP_DOWN, EPWM_CLOCK_DIVIDER_1,
+            EPWM_HSCLOCK_DIVIDER_1};
 
+void configurePhase(uint32_t base, uint32_t masterBase, uint16_t phaseVal);
 void switch_state_machine(enum switch_commands command);
 
 
@@ -93,13 +101,88 @@ void main(void)
 
     Board_init();
 
+    /* PWM SETUP */
+
+    //
+    // Configuring ePWM module for desired frequency and duty
+    //
+    EPWM_configureSignal(EPWM1_BASE, &pwmSignal);
+    EPWM_configureSignal(EPWM2_BASE, &pwmSignal);
+    EPWM_configureSignal(EPWM3_BASE, &pwmSignal);
+
+    //
+    // Configure phase between PWM1, PWM2 & PWM3.
+    // PWM1 is configured as master and ePWM2 & 3
+    // are configured as slaves.
+    //
+    EPWM_disablePhaseShiftLoad(EPWM1_BASE);
+    EPWM_setPhaseShift(EPWM1_BASE, 0U);
+
+    //
+    // ePWM1 SYNCO is generated on CTR=0
+    //
+    EPWM_setSyncOutPulseMode(EPWM1_BASE, EPWM_SYNC_OUT_PULSE_ON_COUNTER_ZERO);
+
+    //
+    // Configure phase shift for EPWM2 & 3
+    //
+    configurePhase(EPWM2_BASE, EPWM1_BASE, 0);
+    configurePhase(EPWM3_BASE, EPWM1_BASE, 0);
+
+    EPWM_enablePhaseShiftLoad(EPWM2_BASE);
+    EPWM_enablePhaseShiftLoad(EPWM3_BASE);
+
+    //
+    // Enable sync and clock to PWM
+    //
+    SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_TBCLKSYNC);
+
+    //
+    // Enable interrupts required for this example
+    //
+    Interrupt_enable(INT_EPWM1);
+
+    EINT;  // Enable Global interrupt INTM
+    ERTM;  // Enable Global realtime interrupt DBGM
+
+    /* END PWM SETUP */
+
     for(;;)
     {
         switch_state_machine(INCREMENT);
-        DEVICE_DELAY_US(50000);
+        DEVICE_DELAY_US(1000);
     }
 
 
+}
+
+//
+// configurePhase - Configure ePWMx Phase
+//
+void configurePhase(uint32_t base, uint32_t masterBase, uint16_t phaseVal)
+{
+    uint32_t readPrdVal, phaseRegVal;
+
+    //
+    // Read Period value to calculate value for Phase Register
+    //
+    readPrdVal = EPWM_getTimeBasePeriod(masterBase);
+
+    //
+    // Caluclate phase register values based on Time Base counter mode
+    //
+    if((HWREGH(base + EPWM_O_TBCTL) & 0x3U) == EPWM_COUNTER_MODE_UP_DOWN)
+    {
+        phaseRegVal = (2U * readPrdVal * phaseVal) / 360U;
+    }
+    else if((HWREGH(base + EPWM_O_TBCTL) & 0x3U) < EPWM_COUNTER_MODE_UP_DOWN)
+    {
+        phaseRegVal = (readPrdVal * phaseVal) / 360U;
+    }
+
+    EPWM_selectPeriodLoadEvent(base, EPWM_SHADOW_LOAD_MODE_SYNC);
+    EPWM_setPhaseShift(base, phaseRegVal);
+    EPWM_setTimeBaseCounter(base, phaseRegVal);
 }
 
 void switch_state_machine(enum switch_commands command)
@@ -218,6 +301,13 @@ void switch_state_machine(enum switch_commands command)
     }
     switch(state){
         case STATE0:
+            GPIO_setPinConfig(HSA_GPIO);
+            GPIO_setPinConfig(LSA_GPIO);
+            GPIO_setPinConfig(HSB_GPIO);
+            GPIO_setPinConfig(LSB_GPIO);
+            GPIO_setPinConfig(HSC_GPIO);
+            GPIO_setPinConfig(LSC_GPIO);
+
             GPIO_writePin(HSA_PIN,0);
             GPIO_writePin(LSA_PIN,0);
             GPIO_writePin(HSB_PIN,0);
@@ -226,52 +316,53 @@ void switch_state_machine(enum switch_commands command)
             GPIO_writePin(LSC_PIN,0);
             break;
         case STATE1:
-            GPIO_writePin(HSA_PIN,1);
-            GPIO_writePin(LSA_PIN,0);
-            GPIO_writePin(HSB_PIN,0);
-            GPIO_writePin(LSB_PIN,1);
-            GPIO_writePin(HSC_PIN,0);
-            GPIO_writePin(LSC_PIN,0);
+            GPIO_setPinConfig(HSA_PWM);
+            GPIO_setPinConfig(LSA_GPIO);
+            GPIO_setPinConfig(HSB_GPIO);
+            GPIO_setPinConfig(LSB_PWM);
+            GPIO_setPinConfig(HSC_GPIO);
+            GPIO_setPinConfig(LSC_GPIO);
             break;
         case STATE2:
-            GPIO_writePin(HSA_PIN,1);
-            GPIO_writePin(LSA_PIN,0);
-            GPIO_writePin(HSB_PIN,0);
-            GPIO_writePin(LSB_PIN,0);
-            GPIO_writePin(HSC_PIN,0);
-            GPIO_writePin(LSC_PIN,1);
+            GPIO_setPinConfig(HSA_PWM);
+            GPIO_setPinConfig(LSA_GPIO);
+            GPIO_setPinConfig(HSB_GPIO);
+            GPIO_setPinConfig(LSB_GPIO);
+            GPIO_setPinConfig(HSC_GPIO);
+            GPIO_setPinConfig(LSC_PWM);
             break;
         case STATE3:
-            GPIO_writePin(HSA_PIN,0);
-            GPIO_writePin(LSA_PIN,0);
-            GPIO_writePin(HSB_PIN,1);
-            GPIO_writePin(LSB_PIN,0);
-            GPIO_writePin(HSC_PIN,0);
-            GPIO_writePin(LSC_PIN,1);
+            GPIO_setPinConfig(HSA_GPIO);
+            GPIO_setPinConfig(LSA_GPIO);
+            GPIO_setPinConfig(HSB_PWM);
+            GPIO_setPinConfig(LSB_GPIO);
+            GPIO_setPinConfig(HSC_GPIO);
+            GPIO_setPinConfig(LSC_PWM);
             break;
         case STATE4:
-            GPIO_writePin(HSA_PIN,0);
-            GPIO_writePin(LSA_PIN,1);
-            GPIO_writePin(HSB_PIN,1);
-            GPIO_writePin(LSB_PIN,0);
-            GPIO_writePin(HSC_PIN,0);
-            GPIO_writePin(LSC_PIN,0);
+            GPIO_setPinConfig(HSA_GPIO);
+            GPIO_setPinConfig(LSA_PWM);
+            GPIO_setPinConfig(HSB_PWM);
+            GPIO_setPinConfig(LSB_GPIO);
+            GPIO_setPinConfig(HSC_GPIO);
+            GPIO_setPinConfig(LSC_GPIO);
             break;
         case STATE5:
-            GPIO_writePin(HSA_PIN,0);
-            GPIO_writePin(LSA_PIN,1);
-            GPIO_writePin(HSB_PIN,0);
-            GPIO_writePin(LSB_PIN,0);
-            GPIO_writePin(HSC_PIN,1);
-            GPIO_writePin(LSC_PIN,0);
+            GPIO_setPinConfig(HSA_GPIO);
+            GPIO_setPinConfig(LSA_PWM);
+            GPIO_setPinConfig(HSB_GPIO);
+            GPIO_setPinConfig(LSB_GPIO);
+            GPIO_setPinConfig(HSC_PWM);
+            GPIO_setPinConfig(LSC_GPIO);
             break;
         case STATE6:
-            GPIO_writePin(HSA_PIN,0);
-            GPIO_writePin(LSA_PIN,0);
-            GPIO_writePin(HSB_PIN,0);
-            GPIO_writePin(LSB_PIN,1);
-            GPIO_writePin(HSC_PIN,1);
-            GPIO_writePin(LSC_PIN,0);
+            GPIO_setPinConfig(HSA_GPIO);
+            GPIO_setPinConfig(LSA_GPIO);
+            GPIO_setPinConfig(HSB_GPIO);
+            GPIO_setPinConfig(LSB_PWM);
+            GPIO_setPinConfig(HSC_PWM);
+            GPIO_setPinConfig(LSC_GPIO);
+
             break;
     }
     DEVICE_DELAY_US(GUARD_PD_US);
